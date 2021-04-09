@@ -86,7 +86,8 @@ float LinuxParser::MemoryUtilization()
                     else if (key == "MemFree:") memFree = stof(value);
                 }
             }
-        }
+    }
+    filestream.close();
     return memTotal > 0.0 ? (memTotal - memFree ) / memTotal : 0.0;
 }
 
@@ -103,6 +104,7 @@ long LinuxParser::UpTime()
         std::istringstream  linestream(line);
         linestream >> uptime;
     }
+    filestream.close();
     return uptime;
 }
 
@@ -130,6 +132,7 @@ long LinuxParser::ActiveJiffies(int pid)
       }
     }
   }
+  filestream.close();
   return active_jifs;
 }
 
@@ -174,6 +177,7 @@ vector<string> LinuxParser::CpuUtilization()
       }
     }
   }
+  filestream.close();
   return cpuUtil;  
 }
 
@@ -195,6 +199,7 @@ int LinuxParser::TotalProcesses()
         }
      }
   }
+  filestream.close();
   return value;
 }
 
@@ -216,6 +221,7 @@ int LinuxParser::RunningProcesses()
         }
      }
   }
+  filestream.close();
   return value; 
 }
 
@@ -227,13 +233,15 @@ string LinuxParser::Command(int pid)
   {
       std::getline(filestream, line);
   }
+  line.resize(40);
+  filestream.close();
   return line;
 }
 
 string LinuxParser::Ram(int pid) 
 { 
   std::string line, key, value;
-  int ram_mb;
+  int ram_mb = 0;
   std::ifstream filestream(kProcDirectory + to_string(pid) + kStatusFilename);
   if (filestream.is_open())
   {
@@ -241,14 +249,16 @@ string LinuxParser::Ram(int pid)
       {
         std::istringstream linestream(line);
         linestream >> key >> value;
-        if (key == "VmSize:") 
+        // Use VmData instead of VmSize to get actual physical memory size
+        if (key == "VmData:") 
         {
           ram_mb = stoi(value)/1000;
           return to_string(ram_mb);
         }
       }      
   }
-  return string();
+  filestream.close();
+  return to_string(ram_mb);
 }
 
 // Read and return the uptime of a process
@@ -263,6 +273,7 @@ long LinuxParser::UpTime(int pid)
     std::istringstream linestream(line);
     for (int i = 1 ; i < 23 ; ++i) linestream >> value;
   }
+  filestream.close();
   if (!value.empty()) uptime = stol(value)/sysconf(_SC_CLK_TCK);
   return LinuxParser::UpTime() - uptime;
 }
@@ -285,6 +296,7 @@ string LinuxParser::Uid(int pid)
       }
     }
   }
+  filestream.close();
   return string();
 }
 
@@ -302,10 +314,11 @@ string LinuxParser::User(int pid)
       while (std::getline(filestream, line)) 
       {
         auto pos = line.find(searchUID);
-        username = line.substr(0, pos - 1);
+        username = line.substr(0, pos);
         return username;
       }
     }
+    filestream.close();
   }
   return string();
 }
